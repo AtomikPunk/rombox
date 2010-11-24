@@ -2,6 +2,8 @@
 
 #include <string>
 
+class Game;
+
 class Release
 {
 public:
@@ -10,4 +12,5 @@ public:
 
 	std::wstring mName;
 	std::wstring mRegion;
+	Game *mGame;
 };

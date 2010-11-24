@@ -48,6 +48,7 @@ int DatParser::ParseGame(Game *outGame)
 
 		ParseRelease(release);
 
+		release->mGame = outGame;
 		outGame->mReleases.push_back(release);
 	}
 
