@@ -15,4 +15,5 @@ Folder::~Folder(void)
 
 int Folder::Populate()
 {
+	return 0;
 }
