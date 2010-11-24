@@ -1,10 +1,8 @@
 #pragma once
 
-#include "RomList.h"
+#include "GameList.h"
 
-#include <libxml/parser.h>
-#pragma comment(lib,"iconv.lib")
-#pragma comment(lib,"libxml2.lib")
+#include <Markup.h>
 
 #include <string>
 #include <map>
@@ -12,34 +10,19 @@
 class DatParser
 {
 public:
-	class ParserData
-	{
-	public:
-		enum State {UNKNOWN = 0, START, FINISH, INSIDE_HEADER, INSIDE_GAME};
-
-		State mState;
-		State mPreviousState;
-		int mUnknownDepth;
-		std::string mCurrentName;
-		std::multimap<std::string,std::string> mCurrentAttributes;
-		std::string mCurrentString;
-
-		void ResetCurrent();
-	};
-
 	DatParser(void);
 	virtual ~DatParser(void);
 
-	int FromFile(const std::string &filename, RomList &outRomList);
+	int FromFile(const std::wstring &filename);
 
-private:
-	static void OnStartDocument(void *inoutData);
-	static void OnStartElement(void *inoutData, const xmlChar *name, const xmlChar **attr);
-	static void OnCharacters(void *inoutData, const xmlChar *ch, int len);
-	static void OnEndElement(void *inoutData, const xmlChar *ch);
-	static void OnEndDocument(void *inoutData);
+	int ParseGame(Game *outGame);
+	int ParseRelease(Release *outRelease);
+	int ParseRom(Rom *outRom);
+
+	const Rom *FindCRC(unsigned long inCRC);
 
 protected:
-	xmlSAXHandler mSAXHandler;
-	ParserData mParserData;
+	CMarkup markup;
+	GameList mGameList;
+	std::map<unsigned long, Rom*> mCRCList;
 };

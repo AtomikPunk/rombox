@@ -65,7 +65,7 @@ int CRC32::Test(int argc, char *argv[])
 	if (argc < 2)
 	{
 		std::cout << "  Usage: " << argv[0] << " <filename> [filename] [filename] ..." << std::endl;
-		return 0;
+		return -1;
 	}
 
 	unsigned long crc;
@@ -79,6 +79,8 @@ int CRC32::Test(int argc, char *argv[])
 		else
 			std::cout << "Unable to compute CRC" << std::endl;
 	}
+
+	return 0;
 }
 
 int CRC32::FromFile(const std::string &filename, unsigned long &crc, unsigned long &size)

@@ -1,115 +1,98 @@
 #include "DatParser.h"
 
+#include <sstream>
 #include <iostream>
-
-void DatParser::ParserData::ResetCurrent()
-{
-	mCurrentName = "";
-	mCurrentString = "";
-	mCurrentAttributes.clear();
-}
 
 DatParser::DatParser(void)
 {
-	memset(&mSAXHandler, 0, sizeof(xmlSAXHandler));
-
-	mSAXHandler.startDocument = (startDocumentSAXFunc)&DatParser::OnStartDocument;
-	mSAXHandler.startElement = (startElementSAXFunc)&DatParser::OnStartElement;
-	mSAXHandler.endElement = (endElementSAXFunc)&DatParser::OnEndElement;
-
-	mParserData.mState = ParserData::UNKNOWN;
 }
 
 DatParser::~DatParser(void)
 {
 }
 
-int DatParser::FromFile(const std::string &filename, RomList &outRomList)
+int DatParser::FromFile(const std::wstring &filename)
 {
-	//xmlDocPtr doc;
-	//xmlNodePtr node;
-	//doc = xmlReadFile(filename.c_str(), NULL, XML_PARSE_DTDVALID);
+	if (!markup.Load(filename))
+		return -1;
 
-	//if (!doc)
-	//	return -1;
+	if (!markup.FindElem(L"datafile"))
+		return -2;
 
-	//node = xmlDocGetRootElement(doc);
-	//if (!node)
-	//{
-	//	xmlFreeDoc(doc);
-	//	return -2;
-	//}
+	mGameList.Clear();
 
-	//std::cout << "Loaded " << filename << std::endl;
-	//std::cout << "  Root: " << node->name << std::endl;
+	markup.IntoElem();
+	while (markup.FindElem(L"game"))
+	{
+		Game *game = new Game();
 
-	//xmlFreeDoc(doc);
+		ParseGame(game);
 
-	xmlSAXUserParseFile(&mSAXHandler, &mParserData, filename.c_str());
+		mGameList.mGames.insert(game);
+	}
+
+	std::cout << "Loaded " << mGameList.mGames.size() << " games." << std::endl;
 
 	return 0;
 }
 
-void DatParser::OnStartDocument(void *inoutData)
+int DatParser::ParseGame(Game *outGame)
 {
-	ParserData *data((ParserData*)inoutData);
-	if (!data)
-		return;
+	outGame->mName = markup.GetAttrib(L"name");
 
-	data->mState = ParserData::START;
-}
+	markup.IntoElem();
 
-void DatParser::OnStartElement(void *inoutData, const xmlChar *name, const xmlChar **attr)
-{
-	ParserData *data((ParserData*)inoutData);
-	if (!data)
-		return;
-
-	switch (data->mState)
+	while (markup.FindElem(L"release"))
 	{
-		case ParserData::START:
-			if (xmlStrcmp(name, BAD_CAST"game") == 0)
-			{
-				data->mState = ParserData::INSIDE_GAME;
-			}
-			else if (xmlStrcmp(name, BAD_CAST"header") == 0)
-			{
-				data->mState = ParserData::INSIDE_HEADER;
-			}
+		Release *release = new Release();
 
-			break;
+		ParseRelease(release);
 
-		case ParserData::UNKNOWN:
-			data->mUnknownDepth++;
-			break;
-
-		default:
-			break;
+		outGame->mReleases.push_back(release);
 	}
-}
 
-void DatParser::OnCharacters(void *inoutData, const xmlChar *ch, int len)
-{
-}
-
-void DatParser::OnEndElement(void *inoutData, const xmlChar *ch)
-{
-	ParserData *data((ParserData*)inoutData);
-	if (!data)
-		return;
-
-	switch (data->mState)
+	while (markup.FindElem(L"rom"))
 	{
-		case ParserData::UNKNOWN:
-			if (--data->mUnknownDepth <= 0)
-				data->mState = data->mPreviousState;
-			break;
+		Rom *rom = new Rom();
 
-		default:
-			break;
+		ParseRom(rom);
+
+		rom->mGame = outGame;
+		outGame->mRoms.push_back(rom);
 	}
+
+	markup.OutOfElem();
+
+	return 0;
 }
 
-void DatParser::OnEndDocument(void *inoutData)
+int DatParser::ParseRelease(Release *outRelease)
 {
+	outRelease->mName = markup.GetAttrib(L"name");
+	outRelease->mRegion = markup.GetAttrib(L"region");
+
+	return 0;
+}
+
+int DatParser::ParseRom(Rom *outRom)
+{
+	outRom->mName = markup.GetAttrib(L"name");
+	std::wstringstream crc;
+	crc.str(markup.GetAttrib(L"crc"));
+	crc >> std::hex >> outRom->mCRC;
+	outRom->mStatus = markup.GetAttrib(L"status");
+
+	mCRCList[outRom->mCRC] = outRom;
+
+	return 0;
+}
+
+const Rom *DatParser::FindCRC(unsigned long inCRC)
+{
+	std::map<unsigned long, Rom*>::const_iterator i;
+	i = mCRCList.find(inCRC);
+	if (i != mCRCList.end())
+		return i->second;
+
+	return NULL;
 }
